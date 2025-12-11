@@ -1,12 +1,94 @@
 // src/App.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./index.css";
 import profileImg from "./assets/rishav-photo.jpg";
 
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   const closeMenu = () => setIsMenuOpen(false);
+
+  // --- Desktop-only welcome voice (React) ---
+  const spokenRef = useRef(false); // prevents repeated speak without rerender
+
+  const isDesktop = (() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|webOS/i.test(ua);
+    const hasTouch = typeof window !== "undefined" && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    // treat devices with touch + mobile UA as mobile; keeps most laptops considered desktop
+    return !isMobileUA && !hasTouch;
+  })();
+
+  const speakDesktopOnce = useCallback(() => {
+    if (spokenRef.current) return;
+    spokenRef.current = true;
+
+    // try resume WebAudio and make a tiny silent poke (helps some browsers)
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
+        try {
+          const buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
+          const src = ctx.createBufferSource();
+          src.buffer = buffer;
+          src.connect(ctx.destination);
+          src.start(0);
+          setTimeout(() => {
+            try { src.stop?.(); } catch (e) {}
+            try { ctx.close?.(); } catch (e) {}
+          }, 40);
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    // warm voices (helps some browsers)
+    try { window.speechSynthesis.getVoices(); } catch (e) {}
+
+    // speak
+    const utter = new SpeechSynthesisUtterance("Welcome to Rishav Mishra portfolio");
+    utter.lang = "en-IN";
+    utter.rate = 1;
+    utter.pitch = 1;
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+        try { window.speechSynthesis.speak(utter); } catch (e) {}
+      }, 20);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return; // run only on desktop/laptop
+
+    let triggered = false;
+    function handler(ev) {
+      if (triggered) return;
+      triggered = true;
+      speakDesktopOnce();
+      window.removeEventListener("pointerdown", handler);
+      window.removeEventListener("click", handler);
+      window.removeEventListener("scroll", handler);
+      window.removeEventListener("wheel", handler);
+    }
+
+    // warm-up voices immediately (optional)
+    try { window.speechSynthesis.getVoices(); } catch (e) {}
+
+    window.addEventListener("pointerdown", handler, { passive: true });
+    window.addEventListener("click", handler, { passive: true });
+    window.addEventListener("scroll", handler, { passive: true });
+    window.addEventListener("wheel", handler, { passive: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handler);
+      window.removeEventListener("click", handler);
+      window.removeEventListener("scroll", handler);
+      window.removeEventListener("wheel", handler);
+    };
+  }, [isDesktop, speakDesktopOnce]);
+  // --- end desktop-only voice block ---
 
   return (
     <div className="app">
@@ -60,28 +142,28 @@ export default function App() {
             AI-Driven <span>Full Stack Developer</span>
           </h2>
 
-       <p className="hero-about">
-  I am a <span>highly resourceful and results-oriented</span>{" "}
-  <span>AI-Driven Full-Stack Solutions Architect</span> specializing in the rapid
-  design, development, and deployment of{" "}
-  <span>end-to-end SaaS applications</span>. I focus on delivering{" "}
-  <span>functional, scalable products</span> by orchestrating the entire system
-  — from UI to secure deployment.
-</p>
+          <p className="hero-about">
+            I am a <span>highly resourceful and results-oriented</span>{" "}
+            <span>AI-Driven Full-Stack Solutions Architect</span> specializing in the rapid
+            design, development, and deployment of{" "}
+            <span>end-to-end SaaS applications</span>. I focus on delivering{" "}
+            <span>functional, scalable products</span> by orchestrating the entire system
+            — from UI to secure deployment.
+          </p>
 
           <div className="hero-buttons">
-           <a
-  href="#projects"
-  className="btn primary-btn"
-  onClick={(e) => {
-    e.preventDefault();
-    document
-      .getElementById("projects")
-      ?.scrollIntoView({ behavior: "smooth" });
-  }}
->
-  View Projects
-</a>
+            <a
+              href="#projects"
+              className="btn primary-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                document
+                  .getElementById("projects")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              View Projects
+            </a>
 
             <a href="#services" className="btn ghost-btn">
               What I Do
@@ -102,15 +184,13 @@ export default function App() {
       <section id="about" className="section">
         <h3 className="section-title">About Me</h3>
         <p className="section-text">
-         I am an AI-driven full-stack developer focused on building intelligent, scalable digital products that solve real-world problems. I specialize in turning complex requirements into clean, efficient systems by combining modern frontend experiences with robust backend architecture.
+          I am an AI-driven full-stack developer focused on building intelligent, scalable digital products that solve real-world problems. I specialize in turning complex requirements into clean, efficient systems by combining modern frontend experiences with robust backend architecture.
 
-My work spans the entire development lifecycle — from designing intuitive user interfaces and crafting high-performance APIs to integrating AI-powered automation and deploying secure, production-ready applications. I place a strong emphasis on clean code, system scalability, and long-term maintainability.
+          My work spans the entire development lifecycle — from designing intuitive user interfaces and crafting high-performance APIs to integrating AI-powered automation and deploying secure, production-ready applications. I place a strong emphasis on clean code, system scalability, and long-term maintainability.
 
-I enjoy working on products that feel fast, responsive, and purposeful, where every feature adds measurable value. Whether it’s a SaaS platform, internal tool, or AI-enabled workflow, my goal is to engineer solutions that are reliable today and adaptable for the future.
+          I enjoy working on products that feel fast, responsive, and purposeful, where every feature adds measurable value. Whether it’s a SaaS platform, internal tool, or AI-enabled workflow, my goal is to engineer solutions that are reliable today and adaptable for the future.
         </p>
       </section>
-
-  
 
       {/* Services Section */}
       <section id="services" className="section">
@@ -142,43 +222,43 @@ I enjoy working on products that feel fast, responsive, and purposeful, where ev
           automation, and intelligent systems.
         </p>
         <div className="projects-grid">
-  <article className="project-card">
-    <h4>Ring Ring CRM</h4>
-    <p>
-      Full-stack CRM with authentication, lead management, CSV
-      import/export, and automated calling workflows.
-    </p>
-    <a href="https://ring-ring-1.onrender.com/" target="_blank" rel="noreferrer">
-      View Project →
-    </a>
-  </article>
+          <article className="project-card">
+            <h4>Ring Ring CRM</h4>
+            <p>
+              Full-stack CRM with authentication, lead management, CSV
+              import/export, and automated calling workflows.
+            </p>
+            <a href="https://ring-ring-1.onrender.com/" target="_blank" rel="noreferrer">
+              View Project →
+            </a>
+          </article>
 
-  <article className="project-card">
-    <h4>bloombyte</h4>
-    <p>
-      Best School Management Software
-Your all-in-one solution for best school management.
-Harnessing AI and cloud technology..
-    </p>
-    <a href="https://bloombyte.io/school-management-software/?utm_source=Google&utm_medium=Search&utm_campaign=BB-Search-School&id=1&gad_source=1&gad_campaignid=22567602189&gbraid=0AAAAAqcnmWXqYtGWrmymyd1WMQKNvNM3r&gclid=Cj0KCQiAi9rJBhCYARIsALyPDtuVBCWUxq71Q07D9SZ3heiK3qo9aIDfojwPPE_hdcTISCuQCKp_xM0aAu4TEALw_wcB" target="_blank" rel="noreferrer">
-      View Project →
-    </a>
-  </article>
+          <article className="project-card">
+            <h4>bloombyte</h4>
+            <p>
+              Best School Management Software
+    Your all-in-one solution for best school management.
+    Harnessing AI and cloud technology..
+            </p>
+            <a href="https://bloombyte.io/school-management-software/" target="_blank" rel="noreferrer">
+              View Project →
+            </a>
+          </article>
 
-  <article className="project-card">
-    <h4>leadsquared</h4>
-    <p>
-      Collections CRM for Debt Recovery
-Empower your teams to track and follow-up with defaulters efficiently, predict debt recovery and enable faster collections.
-    </p>
-    <a href="https://www.leadsquared.com/collections-crm/" target="_blank" rel="noreferrer">
-      View Project →
-    </a>
-  </article>
-</div>
+          <article className="project-card">
+            <h4>leadsquared</h4>
+            <p>
+              Collections CRM for Debt Recovery
+    Empower your teams to track and follow-up with defaulters efficiently, predict debt recovery and enable faster collections.
+            </p>
+            <a href="https://www.leadsquared.com/collections-crm/" target="_blank" rel="noreferrer">
+              View Project →
+            </a>
+          </article>
+        </div>
 
       </section>
-    <section id="contact" className="section">
+      <section id="contact" className="section">
         <h3 className="section-title">Contact</h3>
         <div className="services-grid">
           <div className="service-card">
