@@ -228,7 +228,7 @@ export default function App() {
               Full-stack CRM with authentication, lead management, CSV
               import/export, and automated calling workflows.
             </p>
-            <a href="https://ring-ring-1.onrender.com/" target="_blank" rel="noreferrer">
+            <a href="https://ringringcrm.com/" target="_blank" rel="noreferrer">
               View Project →
             </a>
           </article>
